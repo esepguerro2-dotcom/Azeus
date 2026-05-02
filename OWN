@@ -1,0 +1,140 @@
+-- --------------------------------------------------------------------
+--  Z BOUNTY v2  |  Spectral Series
+--  Auto Bounty — Sky Elevation + AUTO Z + AUTO HAKI
+--  [MÓVIL FRIENDLY - EDICIÓN COMPLETA]
+-- --------------------------------------------------------------------
+
+local function __run()
+
+-- --------------------------------------------------------------------
+--  [CONFIG]
+-- --------------------------------------------------------------------
+local CONFIG = {
+    ["Team"] = "Marine",
+    ["Weapon"] = "Sword", -- Cambiar a "Melee" si usas puños
+    ["MinLevel"] = 100,
+}
+
+-- --------------------------------------------------------------------
+--  SERVICIOS
+-- --------------------------------------------------------------------
+local Players          = game:GetService("Players")
+local ReplicatedStorage   = game:GetService("ReplicatedStorage")
+local RunService          = game:GetService("RunService")
+local VIM                 = game:GetService("VirtualInputManager")
+
+local player     = Players.LocalPlayer
+local UP_SPEED   = 1e35 
+local orbitSpeed = 500
+local angle      = 0
+
+local State = {
+    active        = true,
+    enabledCielo  = true,
+    respawnAbuse  = true,
+}
+
+-- --------------------------------------------------------------------
+--  LÓGICA DE ATAQUE (Z + HAKI + RESET)
+-- --------------------------------------------------------------------
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if State.respawnAbuse then
+            local char = player.Character
+            local hum = char and char:FindFirstChild("Humanoid")
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            
+            if root and hum and hum.Health > 0 then
+                -- 1. Elevar y orbitar
+                angle = angle + math.rad(orbitSpeed)
+                root.CFrame = root.CFrame * CFrame.new(math.cos(angle) * 3, 0, math.sin(angle) * 3)
+                
+                -- 2. ACTIVAR HAKI (Buso)
+                pcall(function()
+                    ReplicatedStorage.Remotes.CommF_:InvokeServer("Buso")
+                end)
+                
+                -- 3. Equipar arma
+                for _, tool in pairs(player.Backpack:GetChildren()) do
+                    if tool:IsA("Tool") and (tool.ToolTip == CONFIG.Weapon or tool.Name:find("Sword")) then
+                        hum:EquipTool(tool)
+                    end
+                end
+                
+                -- 4. ATAQUE Z AUTOMÁTICO
+                task.wait(0.25) -- Tiempo para que el Haki y el arma carguen
+                VIM:SendKeyEvent(true, Enum.KeyCode.Z, false, game)
+                task.wait(0.1)
+                VIM:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
+                
+                -- 5. Auto-Reset
+                task.wait(0.4)
+                hum.Health = 0
+            end
+        end
+        
+        -- Esperar reaparición
+        if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+            player.CharacterAdded:Wait()
+            task.wait(0.5) 
+        end
+    end
+end)
+
+-- Elevación constante al cielo
+RunService.RenderStepped:Connect(function(dt)
+    if State.enabledCielo then
+        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.CFrame = root.CFrame + Vector3.new(0, UP_SPEED * dt, 0)
+        end
+    end
+end)
+
+-- --------------------------------------------------------------------
+--  GUI ARRASTRABLE (DRAGGABLE)
+-- --------------------------------------------------------------------
+local function makeDraggable(frame)
+    local dragging, dragInput, dragStart, startPos
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true; dragStart = input.Position; startPos = frame.Position
+            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+        end
+    end)
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+    end)
+    RunService.RenderStepped:Connect(function()
+        if dragging and dragInput then
+            local delta = dragInput.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 260, 0, 300)
+Main.Position = UDim2.new(0.5, -130, 0.5, -150)
+Main.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+Main.BorderSizePixel = 0
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 15)
+makeDraggable(Main)
+
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, 0, 0, 50); Title.Text = "Z-BOUNTY + HAKI"; Title.TextColor3 = Color3.new(1,1,1); Title.Font = Enum.Font.GothamBold; Title.TextSize = 16; Title.BackgroundTransparency = 1
+
+local Status = Instance.new("TextLabel", Main)
+Status.Size = UDim2.new(1, 0, 0, 40); Status.Position = UDim2.new(0, 0, 0, 60)
+Status.Text = "HAKI: ON | AUTO-Z: ON"; Status.TextColor3 = Color3.fromRGB(0, 200, 255); Status.Font = Enum.Font.Gotham; Status.TextSize = 14; Status.BackgroundTransparency = 1
+
+local Warning = Instance.new("TextLabel", Main)
+Warning.Size = UDim2.new(1, 0, 0, 40); Warning.Position = UDim2.new(0, 0, 0, 100)
+Warning.Text = "Elevación Infinita Activa"; Warning.TextColor3 = Color3.fromRGB(200, 200, 200); Warning.Font = Enum.Font.Gotham; Warning.TextSize = 12; Warning.BackgroundTransparency = 1
+
+print("Spectral Series: Haki, Auto-Z y Elevación activados.")
+
+end
+__run()
