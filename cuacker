@@ -1,0 +1,538 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Window = Rayfield:CreateWindow({
+    Name = "Cuacker Hub",
+    LoadingTitle = "Top 1 Scripter",
+    Icon = "gem",
+    LoadingSubtitle = "skidded",
+    ConfigurationSaving = {
+      Enabled = false,
+      FolderName = "CuackerBlox",
+      FileName = "Cuacker"
+   },
+    Discord = {Enabled = false},
+    KeySystem = false
+})
+
+pcall(function()
+    repeat wait() until game:GetService("ReplicatedStorage").Util.CameraShaker.Main
+    local ss = require(game:GetService("ReplicatedStorage").Util.CameraShaker.Main)
+    local xx = function() return nil end
+    ss.StartShake = xx
+    ss.ShakeOnce = xx
+    ss.ShakeSustain = xx
+    ss.CamerShakeInstance = xx
+    ss.Shake = xx
+    ss.Start = xx
+end)
+
+-- ==========================================
+-- VARIABLES GLOBALES (Cuacker Hub)
+-- ==========================================
+local running = false
+local TeleportEnabled = false
+local InstaTeleportEnabled = false
+local SpectateEnabled = false
+local SelectedPlayer = nil
+local TeleportConnection = nil
+local InstaTpConnection = nil
+local TweenSpeed = {X = 350, Y = 350}
+local PredictionStrength = 0
+local SafeZoneActive = false
+local SafeZoneConnection = nil
+local OriginalPosition = nil
+local FastAttackEnabled = false
+local FastAttackNPCEnabled = false
+local FastAttackConnection = nil
+local FastAttackNPCConnection = nil
+local FastAttackRange = 5000
+local YOffset = 5
+local autoV4 = false
+
+-- Variables Ghost TP
+local GhostTpEnabled = false
+local GhostFrameCounter = 0
+local GHOST_RATIO = 3 
+local GhostSafeCFrame = CFrame.new(0, 800, 0)
+local GhostTpConnection = nil
+
+local ESPEnabled = true
+local ESPBoxes = false
+local ESPNames = true
+local EliteESP = false
+local FruitEsp = false
+local ESPDistance = true
+local ESPMaxDistance = 99999999
+local OriginalCamera = nil
+local SpectateConnection = nil
+local ActiveTween = nil
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local VIM = game:GetService("VirtualInputManager")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local Net = ReplicatedStorage.Modules.Net
+local RegisterHit = Net["RE/RegisterHit"]
+local RegisterAttack = Net["RE/RegisterAttack"]
+
+local ESPObjects = {}
+local EliteESPObjects = {}
+local FruitEspObjects = {}
+
+-- ==========================================
+-- VARIABLES GLOBALES (Rango Infinito)
+-- ==========================================
+local UP_SPEED = 1e35
+local orbitSpeed = 500
+local angle = 0
+
+local CONFIG_INF = {
+    ["Team"] = "Marines", -- Modificado para sugerir Marines por defecto si se usa la lista
+    ["Weapon"] = "Sword",
+    ["MinLevel"] = 100,
+}
+
+local StateInf = {
+    active = false,
+    enabledCielo = false,
+    autoHaki = false,
+    respawnAbuse = false,
+    crashActive = false,
+    selectedTarget = "",
+    lastHitTime = os.clock(),
+    sessionEarned = 0,
+    startBounty = 0,
+    currentBounty = 0,
+    kills = 0,
+    status = "Esperando faccion...",
+}
+
+local SAVE_FILE = "zbounty_save.json"
+
+-- ==========================================
+-- FUNCIONES DE UTILIDAD (General)
+-- ==========================================
+local function TP(targetHRP)
+    local player = Players.LocalPlayer
+    if not player.Character then return end
+
+    local HRP = player.Character:FindFirstChild("HumanoidRootPart")
+    local Humanoid = player.Character:FindFirstChild("Humanoid")
+    if not HRP or not Humanoid then return end
+
+    HRP.AssemblyLinearVelocity = Vector3.zero
+    HRP.AssemblyAngularVelocity = Vector3.zero
+    Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+
+    local predictedPos = targetHRP.Position + (targetHRP.Velocity * PredictionStrength)
+    local targetCFrame = CFrame.new(predictedPos) * CFrame.Angles(0, math.rad(targetHRP.Orientation.Y), 0) * CFrame.new(0, YOffset, 0)
+
+    local Distance = (targetCFrame.Position - HRP.Position).Magnitude
+    local horizontalDist = math.sqrt((targetCFrame.Position.X - HRP.Position.X)^2 + (targetCFrame.Position.Z - HRP.Position.Z)^2)
+    local verticalDist = math.abs(targetCFrame.Position.Y - HRP.Position.Y)
+
+    local speed = TweenSpeed.X
+    if verticalDist > horizontalDist then speed = TweenSpeed.Y end
+
+    if ActiveTween then ActiveTween:Cancel() end
+
+    ActiveTween = TweenService:Create(
+        HRP,
+        TweenInfo.new(Distance / speed, Enum.EasingStyle.Linear),
+        {CFrame = targetCFrame}
+    )
+
+    ActiveTween:Play()
+
+    task.delay(0.05, function()
+        if Humanoid then Humanoid:ChangeState(Enum.HumanoidStateType.Running) end
+    end)
+end
+
+local TARGET_PARTS = { UpperTorso = true, LowerTorso = true, HumanoidRootPart = true }
+
+local function SetNoCollide()
+    local character = Players.LocalPlayer.Character
+    if not character then return end
+    for _, v in ipairs(character:GetChildren()) do
+        if v:IsA("BasePart") and TARGET_PARTS[v.Name] then
+            v.CanCollide = false
+            v.CanTouch = false
+            v.CanQuery = false
+        end
+    end
+end
+
+local function SetCollide()
+    local character = Players.LocalPlayer.Character
+    if not character then return end
+    for _, v in ipairs(character:GetChildren()) do
+        if v:IsA("BasePart") and TARGET_PARTS[v.Name] then
+            v.CanCollide = true
+            v.CanTouch = true
+            v.CanQuery = true
+        end
+    end
+end
+
+local function GetPlayerList()
+    local list = {}
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= Players.LocalPlayer then table.insert(list, p.Name) end
+    end
+    if #list == 0 then table.insert(list, "None") end
+    return list
+end
+
+-- ==========================================
+-- FUNCIONES RANGO INFINITO / CRASH / TARGET
+-- ==========================================
+local function fmt(n)
+    if not n then return "0" end
+    n = math.floor(n)
+    if n >= 1e9 then return string.format("%.2fB", n/1e9)
+    elseif n >= 1e6 then return string.format("%.2fM", n/1e6)
+    elseif n >= 1e3 then return string.format("%.1fK", n/1e3)
+    end
+    return tostring(n)
+end
+
+local function getBounty()
+    local val = 0
+    pcall(function()
+        local d = LocalPlayer:FindFirstChild("Data")
+        if d then
+            local b = d:FindFirstChild("Bounty") or d:FindFirstChild("Honor") or d:FindFirstChild("Rep")
+            if b and type(b.Value) == "number" then val = b.Value; return end
+        end
+        local ls = LocalPlayer:FindFirstChild("leaderstats")
+        if ls then
+            local b = ls:FindFirstChild("Bounty/Honor") or ls:FindFirstChild("Bounty") or ls:FindFirstChild("Honor")
+            if b and type(b.Value) == "number" then val = b.Value end
+        end
+    end)
+    return val
+end
+
+local function saveData()
+    pcall(function()
+        writefile(SAVE_FILE, HttpService:JSONEncode({
+            sessionEarned = StateInf.sessionEarned,
+            startBounty = StateInf.startBounty,
+            kills = StateInf.kills,
+        }))
+    end)
+end
+
+local function loadData()
+    pcall(function()
+        if isfile and isfile(SAVE_FILE) then
+            local d = HttpService:JSONDecode(readfile(SAVE_FILE))
+            if d then
+                StateInf.sessionEarned = d.sessionEarned or 0
+                StateInf.startBounty = d.startBounty or getBounty()
+                StateInf.kills = d.kills or 0
+                return
+            end
+        end
+        StateInf.startBounty = getBounty()
+    end)
+end
+
+local function hasValidTargets()
+    for _, pl in pairs(Players:GetPlayers()) do
+        if pl ~= LocalPlayer then
+            local level = 0
+            pcall(function()
+                local d = pl:FindFirstChild("Data")
+                if d then
+                    local lv = d:FindFirstChild("Level")
+                    if lv then level = lv.Value end
+                end
+            end)
+            if level >= CONFIG_INF["MinLevel"] then return true end
+        end
+    end
+    return false
+end
+
+-- ==========================================
+-- SISTEMA DE FACCIÓN (LIMPIO Y MANUAL)
+-- ==========================================
+local function selectFaction(faction)
+    pcall(function()
+        local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+        if remotes and remotes:FindFirstChild("CommF_") then 
+            remotes.CommF_:InvokeServer("SetTeam", faction)
+            if faction == "Marines" then
+                remotes.CommF_:InvokeServer("SetTeam", "Marine")
+            end
+        end
+    end)
+end
+
+local function down(key)
+    pcall(function()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        VIM:SendKeyEvent(true, key, false, hrp)
+        task.wait(0.15)
+        VIM:SendKeyEvent(false, key, false, hrp)
+    end)
+end
+
+local function equip(tooltip)
+    if not tooltip then return end
+    pcall(function()
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
+            if tool:IsA("Tool") and tool.ToolTip == tooltip then
+                if not hum:IsDescendantOf(tool) then
+                    hum:EquipTool(tool); return
+                end
+            end
+        end
+    end)
+end
+
+local function buso()
+    pcall(function()
+        local CommF_ = ReplicatedStorage:FindFirstChild("Remotes"):FindFirstChild("CommF_")
+        if CommF_ then CommF_:InvokeServer("Buso") end
+    end)
+end
+
+local function crashServer(duration)
+    duration = duration or 2
+    StateInf.status = "💣 CRASHEANDO..."
+    local endTime = os.clock() + duration
+    local CommF_ = ReplicatedStorage:FindFirstChild("Remotes"):FindFirstChild("CommF_")
+    
+    while os.clock() < endTime do
+        pcall(function()
+            for i = 1, 100 do
+                task.spawn(function()
+                    pcall(function() if CommF_ then CommF_:InvokeServer("Buso") end end)
+                end)
+            end
+            pcall(function()
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    local hrp = char.HumanoidRootPart
+                    for i = 1, 50 do
+                        task.spawn(function()
+                            hrp.CFrame = hrp.CFrame * CFrame.new(math.random(-1000, 1000), math.random(-500, 500), math.random(-1000, 1000))
+                        end)
+                    end
+                end
+            end)
+        end)
+        task.wait(0.001)
+    end
+    StateInf.status = "Activo"
+end
+
+local function killTarget(targetName)
+    if targetName == "" or targetName == "None" then return end
+    local targetPlayer = Players:FindFirstChild(targetName)
+    if not targetPlayer or not targetPlayer.Character then return end
+    StateInf.status = "🎯 Matando objetivo..."
+    pcall(function()
+        local targetHum = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if targetHum then
+            targetHum.Health = 0
+            StateInf.kills += 1
+            StateInf.status = "✓ Objetivo eliminado"
+            task.wait(1)
+            StateInf.status = "Activo"
+        end
+    end)
+end
+
+-- ==========================================
+-- SISTEMAS Y LÓGICAS ANTIGUAS
+-- ==========================================
+local function StartTeleporting()
+    if TeleportConnection then TeleportConnection:Disconnect() end
+    TeleportConnection = RunService.Heartbeat:Connect(function()
+        if TeleportEnabled and SelectedPlayer and not SafeZoneActive then
+            local target = Players:FindFirstChild(SelectedPlayer)
+            if target and target.Character then
+                local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then 
+                    TP(hrp)
+                    SetNoCollide()
+                end
+            end
+        end
+    end)
+end
+
+local function StartInstaTeleporting()
+    if InstaTpConnection then InstaTpConnection:Disconnect() end
+    InstaTpConnection = RunService.Stepped:Connect(function()
+        if not InstaTeleportEnabled or not SelectedPlayer or SafeZoneActive then return end
+        pcall(function()
+            local char = LocalPlayer.Character
+            local target = Players:FindFirstChild(SelectedPlayer)
+            if char and target and target.Character then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+                if hrp and targetHRP then
+                    local bangOffset = CFrame.new(0, YOffset, 0) 
+                    hrp.CFrame = targetHRP.CFrame * bangOffset
+                end
+            end
+        end)
+    end)
+end
+
+local function StartGhostTP()
+    if GhostTpConnection then GhostTpConnection:Disconnect() end
+    GhostTpConnection = RunService.Heartbeat:Connect(function()
+        if not GhostTpEnabled or not SelectedPlayer then return end
+        pcall(function()
+            local char = LocalPlayer.Character
+            local target = Players:FindFirstChild(SelectedPlayer)
+            if char and target and target.Character then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+                if hrp and targetHRP then
+                    GhostFrameCounter = GhostFrameCounter + 1
+                    if GhostFrameCounter % GHOST_RATIO == 0 then
+                        hrp.CFrame = GhostSafeCFrame 
+                    else
+                        hrp.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 3) 
+                    end
+                end
+            end
+        end)
+    end)
+end
+
+local function StartSpectating()
+    if not OriginalCamera then OriginalCamera = Camera.CameraSubject end
+    if SpectateConnection then SpectateConnection:Disconnect() end
+    SpectateConnection = RunService.RenderStepped:Connect(function()
+        if not SpectateEnabled or not SelectedPlayer then 
+            StopSpectating()
+            return 
+        end
+        pcall(function()
+            local target = Players:FindFirstChild(SelectedPlayer)
+            if target and target.Character then
+                local targetHumanoid = target.Character:FindFirstChild("Humanoid")
+                if targetHumanoid then Camera.CameraSubject = targetHumanoid else StopSpectating() end
+            else
+                StopSpectating()
+            end
+        end)
+    end)
+end
+
+function StopSpectating()
+    if SpectateConnection then SpectateConnection:Disconnect(); SpectateConnection = nil end
+    if OriginalCamera then pcall(function() Camera.CameraSubject = OriginalCamera end)
+    else pcall(function() if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then Camera.CameraSubject = LocalPlayer.Character.Humanoid end end) end
+    OriginalCamera = nil
+end
+
+local function AttackMultipleTargets(targets)
+    pcall(function()
+        if not targets or #targets == 0 then return end
+        local allTargets = {}
+        for _, targetChar in pairs(targets) do
+            local head = targetChar:FindFirstChild("Head")
+            if head then table.insert(allTargets, { targetChar, head }) end
+        end
+        if #allTargets > 0 then
+            RegisterAttack:FireServer(0)
+            RegisterHit:FireServer(allTargets[1][2], allTargets)
+        end
+    end)
+end
+
+local function NewDraw(type, props)
+    local d = Drawing.new(type)
+    for i,v in pairs(props) do d[i] = v end
+    return d
+end
+
+local function ClearESP(plr) if ESPObjects[plr] then for _,obj in pairs(ESPObjects[plr]) do obj:Remove() end ESPObjects[plr] = nil end end
+local function ClearEliteESP(obj) if EliteESPObjects[obj] then for _,espObj in pairs(EliteESPObjects[obj]) do espObj:Remove() end EliteESPObjects[obj] = nil end end
+local function ClearFruitEsp(obj) if FruitEspObjects[obj] then for _,espObj in pairs(FruitEspObjects[obj]) do espObj:Remove() end FruitEspObjects[obj] = nil end end
+
+local function GetLevel(plr)
+    local data = plr:FindFirstChild("Data")
+    if data then
+        local level = data:FindFirstChild("Level")
+        if level and level.Value then return tostring(level.Value) end
+    end
+    return nil
+end
+
+RunService.RenderStepped:Connect(function()
+    for _,plr in ipairs(Players:GetPlayers()) do
+        if plr == LocalPlayer then ClearESP(plr) continue end
+        local char = plr.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChild("Humanoid")
+
+        if not ESPEnabled or not hrp or not hum or hum.Health <= 0 then ClearESP(plr) continue end
+        local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
+        if dist > ESPMaxDistance then ClearESP(plr) continue end
+        local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+        if not onScreen then ClearESP(plr) continue end
+
+        ESPObjects[plr] = ESPObjects[plr] or {}
+        if ESPBoxes then
+            ESPObjects[plr].Box = ESPObjects[plr].Box or NewDraw("Square", {Thickness = 2, Filled = false, Color = Color3.fromRGB(255, 60, 60)})
+            local size = Vector2.new(2200 / dist, 3200 / dist)
+            ESPObjects[plr].Box.Size = size
+            ESPObjects[plr].Box.Position = Vector2.new(pos.X - size.X / 2, pos.Y - size.Y / 2)
+            ESPObjects[plr].Box.Visible = true
+        elseif ESPObjects[plr].Box then ESPObjects[plr].Box.Visible = false end
+
+        if ESPNames or ESPDistance then
+            ESPObjects[plr].Text = ESPObjects[plr].Text or NewDraw("Text", {Size = 16, Center = true, Outline = true, Color = Color3.new(1,1,1)})
+            local txt = ""
+            if ESPNames then
+                txt = plr.Name
+                local level = GetLevel(plr)
+                if level then txt ..= " [Lvl " .. level .. "]" end
+            end
+            if ESPDistance then txt ..= " (" .. math.floor(dist / 10) .. "m)" end
+            ESPObjects[plr].Text.Text = txt
+            ESPObjects[plr].Text.Position = Vector2.new(pos.X, pos.Y - 25)
+            ESPObjects[plr].Text.Visible = true
+        elseif ESPObjects[plr].Text then ESPObjects[plr].Text.Visible = false end
+    end
+
+    if EliteESP then
+        local eliteNames = {"Diablo", "Deandre", "Urban"}
+        local enemiesFolder = workspace:FindFirstChild("Enemies")
+        if enemiesFolder then
+            for _, eliteName in ipairs(eliteNames) do
+                local obj = enemiesFolder:FindFirstChild(eliteName)
+                if obj then
+                    local hrp = obj:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
+                        if dist <= ESPMaxDistance then
+                            local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+                            if onScreen then
+                                EliteESPObjects[obj] = EliteESPObjects[obj] or {}
+                                EliteESPObjects[obj].Box = EliteESPObjects[obj].Box or NewDraw("Square", {Thickness = 3, Filled = false, Color = Color3.fromRGB(255, 215, 0)})
+                                local size = Vector2.new(2200 / dist, 3200 / dist)
+                                EliteESPObjects[obj].Box.Size = size
+                                EliteESPObjects[obj].Box.Position = Vector2.new(pos.X - size.X / 2, pos.Y - size.Y / 2)
+                                EliteESPObjects[obj].Box.Visible = true
+                                EliteESPObjects[obj].Text = EliteESPObjects[obj].Text or NewDraw("Text", {Size = 18, Cen
