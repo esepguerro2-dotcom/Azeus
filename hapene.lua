@@ -1,5 +1,5 @@
 --[[
-    Handicapped Engine
+    Mionix Engine
     LocalScript → StarterGui → Tecla K abre/cierra
     [+] UI Seria y Plana
     [+] Fly Engine Custom (Teclado: P)
@@ -24,7 +24,7 @@ local lp           = Players.LocalPlayer
 local pGui         = lp:WaitForChild("PlayerGui")
 local Cam          = workspace.CurrentCamera
 
-pcall(function() local o = pGui:FindFirstChild("HE_UI_SERIOUS"); if o then o:Destroy() end end)
+pcall(function() local o = pGui:FindFirstChild("ME_UI_SERIOUS"); if o then o:Destroy() end end)
 
 ----------------------------------------------------------------
 -- SILENT AIM MODULE (Inyectado)
@@ -92,7 +92,7 @@ local SilentAimModule = (function()
 
     local guiParent = (gethui and gethui()) or game:GetService("CoreGui"):FindFirstChild("RobloxGui") or lp:WaitForChild("PlayerGui")
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "SacredFOV_UI"; ScreenGui.ResetOnSpawn = false; ScreenGui.IgnoreGuiInset = true
+    ScreenGui.Name = "MionixFOV_UI"; ScreenGui.ResetOnSpawn = false; ScreenGui.IgnoreGuiInset = true
     pcall(function() ScreenGui.Parent = guiParent end)
 
     local FOVFrame = Instance.new("Frame", ScreenGui)
@@ -248,7 +248,7 @@ local SilentAimModule = (function()
 
     local function createTracer()
         if tracerModel then return end
-        tracerModel       = Instance.new("Model", workspace); tracerModel.Name = "SacredTracer"
+        tracerModel       = Instance.new("Model", workspace); tracerModel.Name = "MionixTracer"
         tracerAttachment0 = Instance.new("Attachment", tracerModel)
         tracerAttachment1 = Instance.new("Attachment", tracerModel)
         tracerBeam        = Instance.new("Beam", tracerModel)
@@ -436,7 +436,7 @@ if not FN_I then pcall(function() FN_I = Font.fromEnum(Enum.Font.Code) end) end
 -- UI FRAMEWORK (SERIOUS & FLAT)
 ----------------------------------------------------------------
 local sg = Instance.new("ScreenGui")
-sg.Name = "HE_UI_SERIOUS"; sg.ResetOnSpawn = false; sg.ZIndexBehavior = Enum.ZIndexBehavior.Global
+sg.Name = "ME_UI_SERIOUS"; sg.ResetOnSpawn = false; sg.ZIndexBehavior = Enum.ZIndexBehavior.Global
 sg.DisplayOrder = 50; sg.Parent = pGui
 
 local main = Instance.new("Frame", sg)
@@ -455,7 +455,7 @@ top.Position = UDim2.fromOffset(8, 0); top.ZIndex = 5
 
 local tLbl = Instance.new("TextLabel", top)
 tLbl.BackgroundTransparency = 1; tLbl.Position = UDim2.fromOffset(4, 0); tLbl.Size = UDim2.new(0, 220, 1, 0)
-tLbl.Text = "HANDICAPPED ENGINE"; tLbl.TextSize = 13; tLbl.TextColor3 = C.white
+tLbl.Text = "MIONIX ENGINE"; tLbl.TextSize = 13; tLbl.TextColor3 = C.white
 tLbl.TextXAlignment = Enum.TextXAlignment.Left; tLbl.ZIndex = 5
 if FN then tLbl.FontFace = FN else tLbl.Font = Enum.Font.Code end
 
@@ -1061,9 +1061,9 @@ local function ClearESP() for _,o in pairs(ESPObj) do pcall(function() o:Destroy
 local function MkESP(p)
     pcall(function()
         if not p.Character or not p.Character:FindFirstChild("Head") then return end
-        if p.Character.Head:FindFirstChild("HE_ESP") then return end
+        if p.Character.Head:FindFirstChild("ME_ESP") then return end
         local bb = Instance.new("BillboardGui", p.Character.Head)
-        bb.Name = "HE_ESP"; bb.Size = UDim2.new(0,120,0,105)
+        bb.Name = "ME_ESP"; bb.Size = UDim2.new(0,120,0,105)
         bb.StudsOffset = Vector3.new(0,3.5,0); bb.AlwaysOnTop = true
         local af = Instance.new("Frame", bb); af.Size = UDim2.new(0,24,0,24); af.AnchorPoint = Vector2.new(0.5,0)
         af.Position = UDim2.new(0.5,0,0,0); af.BackgroundColor3 = Color3.fromRGB(25,25,30); af.BorderSizePixel = 0
@@ -1283,9 +1283,9 @@ section(pages.Combat, "DEFENSAS", no())
 addTgl(pages.Combat, "Anti Mover", {cb=function(v)
     if v then
         local function add(c) if not c:FindFirstChild("AntiMover") then Instance.new("Folder", c).Name = "AntiMover" end end
-        if lp.Character then add(lp.Character) end; _G._HE_AMConn = lp.CharacterAdded:Connect(add)
+        if lp.Character then add(lp.Character) end; _G._ME_AMConn = lp.CharacterAdded:Connect(add)
     else
-        if _G._HE_AMConn then _G._HE_AMConn:Disconnect() end
+        if _G._ME_AMConn then _G._ME_AMConn:Disconnect() end
         pcall(function() if lp.Character:FindFirstChild("AntiMover") then lp.Character.AntiMover:Destroy() end end)
     end end}, no())
 addTgl(pages.Combat, "Unbreakable", {cb=function(s) Unbr = s
@@ -1366,21 +1366,21 @@ addTgl(pages.Utility, "Anti-Lag Gris Total (Mapa+Cielo)", {cb=function(s)
     if s then
         pcall(function()
             -- ColorCorrectionEffect → desaturar todo a gris
-            local cc = Lighting:FindFirstChild("HE_GrayCC")
+            local cc = Lighting:FindFirstChild("ME_GrayCC")
             if not cc then
                 cc      = Instance.new("ColorCorrectionEffect", Lighting)
-                cc.Name = "HE_GrayCC"
+                cc.Name = "ME_GrayCC"
             end
             cc.Saturation = -1
             cc.Brightness = -0.05
             cc.Contrast   = 0.15
 
             -- Mover cielo fuera de Lighting (lo deshabilita)
-            _G._HE_SkySave = _G._HE_SkySave or {}
+            _G._ME_SkySave = _G._ME_SkySave or {}
             for _, sky in pairs(Lighting:GetChildren()) do
                 if sky:IsA("Sky") then
                     sky.Parent = workspace
-                    table.insert(_G._HE_SkySave, sky)
+                    table.insert(_G._ME_SkySave, sky)
                 end
             end
 
@@ -1403,13 +1403,13 @@ addTgl(pages.Utility, "Anti-Lag Gris Total (Mapa+Cielo)", {cb=function(s)
         end)
     else
         pcall(function()
-            local cc = Lighting:FindFirstChild("HE_GrayCC"); if cc then cc:Destroy() end
+            local cc = Lighting:FindFirstChild("ME_GrayCC"); if cc then cc:Destroy() end
             -- Restaurar cielo
-            if _G._HE_SkySave then
-                for _, sky in pairs(_G._HE_SkySave) do
+            if _G._ME_SkySave then
+                for _, sky in pairs(_G._ME_SkySave) do
                     pcall(function() sky.Parent = Lighting end)
                 end
-                _G._HE_SkySave = {}
+                _G._ME_SkySave = {}
             end
         end)
     end end}, no())
