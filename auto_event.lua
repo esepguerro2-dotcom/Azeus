@@ -13,7 +13,7 @@ local RegisterAttack = Net["RE/RegisterAttack"]
 
 local Config = {
     Enabled = false,
-    Range = 100,
+    Range = 500,
     MagnetStrength = 0.3,
     HoverHeight = 30,
 }
