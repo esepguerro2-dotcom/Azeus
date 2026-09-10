@@ -13,9 +13,10 @@ local RegisterAttack = Net["RE/RegisterAttack"]
 
 local Config = {
     Enabled = false,
-    Range = 5000,
+    Range = 50,
     MagnetStrength = 0.3,
-    HoverHeight = 15,   -- studs arriba de la posicion inicial al activar
+    HoverHeight = 15,
+    PullOffset = 30,    -- studs debajo del jugador donde se juntan los NPCs
 }
 
 local Connection = nil
@@ -51,7 +52,7 @@ local function Start()
         if not enemiesFolder then return end
 
         -- punto donde caen los NPCs = debajo del jugador en el suelo
-        local pullPoint = myHRP.Position - Vector3.new(0, Config.HoverHeight, 0)
+        local pullPoint = myHRP.Position - Vector3.new(0, Config.PullOffset, 0)
 
         local targets = {}
         for _, npc in pairs(enemiesFolder:GetChildren()) do
