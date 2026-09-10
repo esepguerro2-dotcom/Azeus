@@ -13,17 +13,12 @@ local function StartAutoEvent()
         if not myHRP then return end
         local enemiesFolder = workspace:FindFirstChild("Enemies")
         if not enemiesFolder then return end
-        local nearestHRP, nearestDist = nil, math.huge
         local targets = {}
         for _, npc in pairs(enemiesFolder:GetChildren()) do
             local hrp = npc:FindFirstChild("HumanoidRootPart")
             local hum = npc:FindFirstChild("Humanoid")
             if hrp and hum and hum.Health > 0 then
                 local dist = (hrp.Position - myHRP.Position).Magnitude
-                if dist < nearestDist then
-                    nearestDist = dist
-                    nearestHRP = hrp
-                end
                 if dist <= 5000 then
                     pcall(function()
                         hrp.CFrame = CFrame.new(hrp.Position:Lerp(myHRP.Position, 0.2))
@@ -31,11 +26,6 @@ local function StartAutoEvent()
                     table.insert(targets, npc)
                 end
             end
-        end
-        if nearestHRP then
-            pcall(function()
-                myHRP.CFrame = CFrame.new(nearestHRP.Position + Vector3.new(0, 15, 0))
-            end)
         end
         if #targets > 0 then
             AttackMultipleTargets(targets)
